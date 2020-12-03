@@ -55,6 +55,7 @@
   <build_export_depend>std_msgs</build_export_depend>
   <build_export_depend>urdf</build_export_depend>
   <build_export_depend>cv_bridge</build_export_depend>
+  <build_export_depend>message_filters</build_export_depend>
   <exec_depend>controller_manager</exec_depend>
   <exec_depend>joint_state_controller</exec_depend>
   <exec_depend>robot_state_publisher</exec_depend>
@@ -63,6 +64,7 @@
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>urdf</exec_depend>
   <exec_depend>cv_bridge</exec_depend>
+  <exec_depend>message_filters</exec_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
