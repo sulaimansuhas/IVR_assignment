@@ -36,10 +36,10 @@ class image_converter:
 
     #initialize publiesher to send coordinates from camera 1
 
-    self.camera1b_xy = rospy.Publisher("camera1b_xy", Float64MultiArray, queue_size=10)
-    self.camera1g_xy = rospy.Publisher("camera1g_xy", Float64MultiArray, queue_size = 10)
-    self.camera1r_xy = rospy.Publisher("camera1r_xy", Float64MultiArray, queue_size = 10)
-    self.camera1y_xy = rospy.Publisher("camera1y_xy", Float64MultiArray, queue_size = 10)
+    self.camera1b_xy_pub = rospy.Publisher("camera1b_xy", Float64MultiArray, queue_size=10)
+    self.camera1g_xy_pub = rospy.Publisher("camera1g_xy", Float64MultiArray, queue_size = 10)
+    self.camera1r_xy_pub = rospy.Publisher("camera1r_xy", Float64MultiArray, queue_size = 10)
+    self.camera1y_xy_pub = rospy.Publisher("camera1y_xy", Float64MultiArray, queue_size = 10)
 
     self.camera2b_xy = rospy.Subscriber("camera2b_xy", Float64MultiArray, self.callbackc2b)
     self.camera2g_xy = rospy.Subscriber("camera2g_xy", Float64MultiArray, self.callbackc2g)
@@ -47,6 +47,12 @@ class image_converter:
     self.camera2y_xy = rospy.Subscriber("camera2y_xy", Float64MultiArray, self.callbackc2y)
     self.camera2o_xy = rospy.Subscriber("camera2o_xy", Float64MultiArray, self.callbackc2o)
     self.camera2bf_xy = rospy.Subscriber("camera2bf_xy", Float64MultiArray, self.callbackc2bf)
+
+    self.dist_o2bf_pub = rospy.Publisher("dist_o2bf", Float64, queue_size = 10)
+    self.ja1_pub = rospy.Publisher("ja1", Float64, queue_size = 10)
+    self.ja2_pub = rospy.Publisher("ja2", Float64, queue_size = 10)
+    self.ja3_pub = rospy.Publisher("ja3", Float64, queue_size = 10)
+    self.ja4_pub = rospy.Publisher("ja4", Float64, queue_size = 10)
 
     # initialize a subscriber to recieve messages rom a topic named /robot/camera1/image_raw and use callback function to recieve data
     self.image_sub1 = rospy.Subscriber("/camera1/robot/image_raw",Image,self.callback1)
@@ -108,7 +114,7 @@ class image_converter:
     self.c2bf_xy = c2bf.data
     self.c2bf_xy = np.array(self.c2bf_xy).flatten()
 
-  def threedee_coordinates(self,cam1coords,cam2coords, color):
+  def threedee_coordinates(self,cam1coords,cam2coords, color,p2m):
     zeroes = np.array([0,0], dtype = np.float64)
     ones = np.array([1,1], dtype = np.float64)
     x=None
@@ -117,14 +123,16 @@ class image_converter:
     z2=None
 
     if color == 'g':
-      if (np.array_equal(cam1coords, zeroes)) or (np.array_equal(cam1coords,ones)):
+      print('!!!')
+      print(cam1coords)                                                                                                                    #xy values of the green blob can't exceed for than the link length(3.5)
+      if (np.array_equal(cam1coords, zeroes)) or (np.array_equal(cam1coords,ones)) or ((cam1coords[0]*p2m) > 3.5) or ((cam1coords[0]*p2m) < -3.5):  #if our estimate exceeds 3.5 or -3.5 due to a bit of error
         y = self.c1g_prev[0]
         z1 = self.c1g_prev[1]
       else:
         y = cam1coords[0]
         z1 = cam1coords[1]
         self.c1g_prev = cam1coords
-      if (np.array_equal(cam2coords, zeroes)) or (np.array_equal(cam2coords,ones)):
+      if (np.array_equal(cam2coords, zeroes)) or (np.array_equal(cam2coords,ones)) or ((cam2coords[0]*p2m) > 3.5) or ((cam2coords[0] *p2m) < -3.5): #same
         x = self.c2g_prev[0]
         z2 = self.c2g_prev[1]
       else:
@@ -132,7 +140,7 @@ class image_converter:
         z2 = cam2coords[1]
         self.c2g_prev = cam2coords
     elif color == 'b':
-      if (np.array_equal(cam1coords, zeroes)) or (np.array_equal(cam1coords,ones)): 
+      if (np.array_equal(cam1coords, zeroes)) or (np.array_equal(cam1coords,ones))  : 
         y = self.c1b_prev[0]
         z1 = self.c1b_prev[1]
       else:
@@ -147,20 +155,20 @@ class image_converter:
         z2 = cam2coords[1]
         self.c2b_prev = cam2coords
     elif color == 'r':
-      if (np.array_equal(cam1coords, zeroes)) or (np.array_equal(cam1coords,ones)):    
+      if (np.array_equal(cam1coords, zeroes)) or (np.array_equal(cam1coords,ones)) or ((cam1coords[0]*p2m) > 6.5) or ((cam1coords[0]*p2m) < -6.5):  #red can't exceed 3.5+3  
         y = self.c1r_prev[0]
         z1 = self.c1r_prev[1]
       else:
         y = cam1coords[0]
         z1 = cam1coords[1]
         self.c1r_prev = cam1coords
-      if (np.array_equal(cam2coords, zeroes)) or (np.array_equal(cam2coords,ones)):
+      if (np.array_equal(cam2coords, zeroes)) or (np.array_equal(cam2coords,ones)) or ((cam1coords[0]*p2m) > 6.5) or ((cam1coords[0]*p2m) < -6.5):
         x = self.c2r_prev[0]
         z2 = self.c2r_prev[1]
       else:
         x = cam2coords[0]
         z2 = cam2coords[1]
-        self.am2prevcoords = cam2coords
+        self.c2r_prev = cam2coords
     elif color == 'y':
       if (np.array_equal(cam1coords, zeroes)) or (np.array_equal(cam1coords,ones)):   
         y = self.c1y_prev[0]
@@ -202,9 +210,10 @@ class image_converter:
     return np.array([x,y,z])
 
   def get_distance(self, point1,point2):  #gives distance from point1 to point2(for 3 points)
+    return np.linalg.norm(point1-point2)
 
-  def pixel2meter(self,yellow, blue):
-    return 2.5/(blue[1]-yellow[1]) #blue and yellows centroids should be more or less remain stationary. We know the length of the link is 2.5 m and the link is along the z axis
+  # def pixel2meter(self,yellow, blue):
+  #   return 2.5/(blue[1]-yellow[1]) #blue and yellows centroids should be more or less remain stationary. We know the length of the link is 2.5 m and the link is along the z axis
     #we have to pass the adjuested coordinates otherwise we get negative number
 
   def adjustcoordinates(self, yellow,blue,green,red): # since opencv coordinates start from the top left of the screen, we have to adjust to have the yellow joint as 0,0
@@ -221,6 +230,45 @@ class image_converter:
     ny = yellow - yellow
     return ny, nb, ng, nr
   # Recieve data from camera 1, process it, and publish
+  
+  def calculate_joints_2_3_4(self, greenpos, redpos, bluepos): # we need the position of the green joint for joints angles 2 and 3, the position of the red joint is needed for  joint angle 4
+    print("---------joint calculation debug starts here-----------")
+    # if(greenpos[0]>3.5):
+    #   dif = greenpos[0] -3.5
+    #   greenpos[0] = 3.5 - dif
+    # elif(greenpos[0]<-3.5):
+    #   dif = -3.5 - greenpos[0]
+    #   greenpos[0] = -3.5 + dif
+    j3 = np.arcsin(greenpos[0]/3.5) #arcsin of x coordinate of the green joint divided by length of link 3
+    print(greenpos[0])
+    print(j3)
+    y_z_dif = greenpos - bluepos
+    j2 = np.arctan2(-y_z_dif[1], y_z_dif[2])
+    print(np.cos(j3))
+    print(greenpos[1])
+    print(j2)
+    
+
+    redgreen_link = redpos-greenpos
+    greenblue_link = greenpos - bluepos
+    #projecting from redgreen link onto green blue link
+    dotprod = redgreen_link[0] * greenblue_link[0] + redgreen_link[1] * greenblue_link[1] + redgreen_link[2] * greenblue_link[2]
+    normvector = np.sqrt(greenblue_link[0]**2 + greenblue_link[1]**2 + greenblue_link[2]**2)
+    projection = np.multiply((dotprod / normvector), greenblue_link)
+    dotProductforcos = projection[0] * redgreen_link[0] + projection[1] * redgreen_link[1] + projection[2] * redgreen_link[2]
+    normvec1 = np.sqrt(redgreen_link[0]**2+redgreen_link[1]**2+redgreen_link[2]**2)
+    normvec2 = np.sqrt(projection[0]**2+projection[1]**2+projection[2]**2)
+    ja4 = np.arccos(dotProductforcos / (normvec1 * normvec2)) #doesn't recognise a few quadrants here
+    j4 = np.arctan2(np.sin(ja4), np.cos(ja4)) # so we use  arctan2
+    if (redgreen_link[1] >= 0):
+      j4 = -j4
+
+    print(j4)
+
+    print("---------ends here ----------------------------------")
+
+    return j2,j3,j4
+
   def callback1(self,data):
     # Recieve the image
     try:
@@ -265,8 +313,7 @@ class image_converter:
     adj_y1, adj_b1, adj_g1, adj_r1 = self.adjustcoordinates(y_xy, b_xy, g_xy, r_xy)
 
     print(adj_y1, adj_b1)
-
-    p2m = self.pixel2meter(adj_y1,adj_b1)
+    p2m = 0.038461538461538464 # hardcoded pixel to meter ratio, obtained from pixel2meter.py file, hardcoded to reduce error
     o_xy , orange_mask= vision.detect_orange(self.cv_image1)
     # cv2.imshow('orange_mask', orange_mask)
     # cv2.drawContours(self.cv_image1, [contours], -1, (0,255,0), 1)
@@ -290,20 +337,29 @@ class image_converter:
 
 
 
+
     print(type(b_xy))
     print(y_xy)
     print("pixel2meter ratio:")
     print(p2m)
-    self.green3d = (self.threedee_coordinates(adj_g1, adj_g2,'g'))*p2m
-    self.blue3d = (self.threedee_coordinates(adj_b1, adj_b2,'b'))*p2m
-    self.red3d = (self.threedee_coordinates(adj_r1, adj_r2,'r'))*p2m
-    self.yellow3d = (self.threedee_coordinates(adj_y1, adj_y2,'y'))*p2m
-    self.orange3d = (self.threedee_coordinates(adj_o1, adj_o2,'o'))*p2m
-    self.baseframe3d = (self.threedee_coordinates(adj_baseframe1, adj_baseframe2,'bf'))*p2m
+    self.green3d = (self.threedee_coordinates(adj_g1, adj_g2,'g',p2m))*p2m
+    self.blue3d = (self.threedee_coordinates(adj_b1, adj_b2,'b',p2m))*p2m
+    self.red3d = (self.threedee_coordinates(adj_r1, adj_r2,'r',p2m))*p2m
+    self.yellow3d = (self.threedee_coordinates(adj_y1, adj_y2,'y',p2m))*p2m
+    self.orange3d = (self.threedee_coordinates(adj_o1, adj_o2,'o',p2m))*p2m
+    self.baseframe3d = (self.threedee_coordinates(adj_baseframe1, adj_baseframe2,'bf',p2m))*p2m
 
     print(self.baseframe3d)
     print(self.yellow3d)
     print(self.blue3d)
+
+    self.o2bf = self.get_distance(self.orange3d,self.baseframe3d)
+
+    print("o2bf distance")
+    print(self.o2bf)
+
+
+    self.ja2, self.ja3, self.ja4 = self.calculate_joints_2_3_4(self.green3d, self.red3d, self.blue3d)
 
     
     pointy = cv2.circle(self.cv_image1, tuple(y_xy.astype(int)), radius=0, color=(0, 0, 0), thickness=3)
@@ -313,7 +369,7 @@ class image_converter:
 
 
     # Uncomment if you want to save the image
-    cv2.imwrite('image_copy.png', self.cv_image1)
+    # cv2.imwrite('image_copy.png', self.cv_image1)
     im1=cv2.imshow('window1', self.cv_image1)
     cv2.waitKey(1)
     # Publish the results
@@ -327,10 +383,16 @@ class image_converter:
       self.robot_joint2_pub.publish(self.j2_traj)
       self.robot_joint3_pub.publish(self.j3_traj)
       self.robot_joint4_pub.publish(self.j4_traj)
-      self.camera1r_xy.publish(self.red)
-      self.camera1g_xy.publish(self.green)
-      self.camera1b_xy.publish(self.blue)
-      self.camera1y_xy.publish(self.yellow)
+      self.camera1r_xy_pub.publish(self.red)
+      self.camera1g_xy_pub.publish(self.green)
+      self.camera1b_xy_pub.publish(self.blue)
+      self.camera1y_xy_pub.publish(self.yellow)
+      self.dist_o2bf_pub.publish(self.o2bf)
+      self.ja1_pub.publish(0)
+      self.ja2_pub.publish(self.ja2)
+      self.ja3_pub.publish(self.ja3)
+      self.ja4_pub.publish(self.ja4)
+
     except CvBridgeError as e:
       print(e)
 

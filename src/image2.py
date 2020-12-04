@@ -62,10 +62,10 @@ class image_converter:
     self.yellow.data = y_xy
 
     #check for centroids
-    pointy = cv2.circle(self.cv_image2, tuple(y_xy.astype(int)), radius=0, color=(0, 0, 0), thickness=3)
-    pointb = cv2.circle(self.cv_image2, tuple(b_xy.astype(int)), radius=0, color=(0, 0, 255), thickness=3)
-    pointg = cv2.circle(self.cv_image2, tuple(g_xy.astype(int)), radius=0, color=(0, 0, 0), thickness=3)
-    pointr = cv2.circle(self.cv_image2, tuple(r_xy.astype(int)), radius=0, color=(255, 0, 0), thickness=3)
+    # pointy = cv2.circle(self.cv_image2, tuple(y_xy.astype(int)), radius=0, color=(0, 0, 0), thickness=3)
+    # pointb = cv2.circle(self.cv_image2, tuple(b_xy.astype(int)), radius=0, color=(0, 0, 255), thickness=3)
+    # pointg = cv2.circle(self.cv_image2, tuple(g_xy.astype(int)), radius=0, color=(0, 0, 0), thickness=3)
+    # pointr = cv2.circle(self.cv_image2, tuple(r_xy.astype(int)), radius=0, color=(255, 0, 0), thickness=3)
 
     o_xy , orange_mask= vision.detect_orange(self.cv_image2)
     self.orange = Float64MultiArray()
@@ -78,9 +78,9 @@ class image_converter:
     self.baseframe = Float64MultiArray()
     self.baseframe.data = baseframe_xy
 
-    pointbf = cv2.circle(self.cv_image2, tuple(baseframe_xy.astype(int)), radius=0, color=(0, 0, 0), thickness=3)
+    # pointbf = cv2.circle(self.cv_image2, tuple(baseframe_xy.astype(int)), radius=0, color=(0, 0, 0), thickness=3)
     # Uncomment if you want to save the image
-    #cv2.imwrite('image_copy.png', cv_image)
+    cv2.imwrite('image_copy.png', self.cv_image2)
     im2=cv2.imshow('window2', self.cv_image2)
     cv2.waitKey(1)
 
